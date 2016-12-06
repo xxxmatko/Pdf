@@ -4,6 +4,10 @@ using System.Text;
 using System.Web;
 using System.Web.Mvc;
 
+using iTextSharp.text;
+using iTextSharp.text.pdf;
+using iTextSharp.tool.xml;
+
 using RazorPdf.Models;
 
 namespace RazorPdf.Controllers
@@ -69,10 +73,7 @@ namespace RazorPdf.Controllers
                             }
                         };
 
-            // Render the view xml to a string
-            var html = ActionResultToString(View(model));
-
-            return View(model);
+            return ViewPdf(model);
         }
 
         #endregion
@@ -114,6 +115,55 @@ namespace RazorPdf.Controllers
             }
 
             return sb.ToString();
+        }
+
+
+        /// <summary>
+        /// Returns a PDF action result.
+        /// </summary>
+        /// <param name="model">The model to send to the view.</param>
+        /// <param name="fileName">Name of the file to download.</param>
+        private ActionResult ViewPdf(object model, string fileName = "test.pdf")
+        {
+            // Render the view html to a string
+            var html = ActionResultToString(View(model));
+
+            // Create the iTextSharp document
+            using (var doc = new Document())
+            using (var stream = new MemoryStream())
+            using (var writer = PdfWriter.GetInstance(doc, stream))
+            {
+                writer.CloseStream = false;
+
+                // Set page dimensions
+                doc.SetPageSize(PageSize.A4);
+                doc.SetMargins(35.4f, 35.4f, 45.4f, 45.4f);
+                doc.Open();
+
+                // Convert string to stream
+                byte[] htmlBytes = Encoding.UTF8.GetBytes(html);
+                using (var htmlStream = new MemoryStream(htmlBytes))
+                {
+                    // Parse html to pdf using DefaultFontProvider
+                    XMLWorkerHelper.GetInstance().ParseXHtml(writer
+                        , doc
+                        , htmlStream
+                        , null
+                        , Encoding.UTF8
+                        , new DefaultFontProvider() as IFontProvider);
+                }
+
+                // Close document
+                doc.Close();
+
+                // Create the result buffer
+                var buffer = new byte[stream.Position];
+                stream.Position = 0;
+                stream.Read(buffer, 0, buffer.Length);
+
+                // Return pdf file reponse
+                return File(buffer, "application/pdf", fileName);
+            }
         }
 
         #endregion
