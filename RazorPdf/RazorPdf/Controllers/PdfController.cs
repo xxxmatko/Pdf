@@ -1,4 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Web;
 using System.Web.Mvc;
 
 using RazorPdf.Models;
@@ -65,8 +68,52 @@ namespace RazorPdf.Controllers
                                 Email = "rhoncus.id.mollis@adipiscingfringillaporttitor.org"
                             }
                         };
-            
+
+            // Render the view xml to a string
+            var html = ActionResultToString(View(model));
+
             return View(model);
+        }
+
+        #endregion
+
+
+        #region [ Methods : Private ]
+
+        /// <summary>
+        /// Converts action result into a string.
+        /// </summary>
+        /// <param name="result">The action result to be rendered.</param>
+        private string ActionResultToString(ActionResult result)
+        {
+            // Create memory writer
+            var sb = new StringBuilder();
+            using (var writer = new StringWriter(sb))
+            {
+                // Create fake http context and response for view rendering
+                var response = new HttpResponse(writer);
+                var context = new HttpContext(System.Web.HttpContext.Current.Request, response);
+
+                // Create fake controller context
+                var controllerContext = new ControllerContext(
+                    new HttpContextWrapper(context),
+                    this.ControllerContext.RouteData,
+                    this.ControllerContext.Controller);
+                var oldContext = System.Web.HttpContext.Current;
+
+                System.Web.HttpContext.Current = context;
+
+                // Render the view
+                result.ExecuteResult(controllerContext);
+
+                // Restore data
+                System.Web.HttpContext.Current = oldContext;
+
+                // Flush memory and return output
+                writer.Flush();
+            }
+
+            return sb.ToString();
         }
 
         #endregion
