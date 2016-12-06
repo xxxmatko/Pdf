@@ -82,6 +82,18 @@ namespace RazorPdf.Controllers
         #region [ Methods : Private ]
 
         /// <summary>
+        /// Creates and returns BinaryContentActionResult.
+        /// </summary>
+        /// <param name="contentBytes">Bytes representing the content.</param>
+        /// <param name="contentType">Type of the content.</param>
+        /// <returns>Return action result.</returns>
+        private ActionResult BinaryContent(byte[] contentBytes, string contentType)
+        {
+            return new BinaryContentResult(contentBytes, contentType);
+        }
+
+
+        /// <summary>
         /// Converts action result into a string.
         /// </summary>
         /// <param name="result">The action result to be rendered.</param>
@@ -123,7 +135,7 @@ namespace RazorPdf.Controllers
         /// </summary>
         /// <param name="model">The model to send to the view.</param>
         /// <param name="fileName">Name of the file to download.</param>
-        private ActionResult ViewPdf(object model, string fileName = "test.pdf")
+        private ActionResult ViewPdf(object model, string fileName = null)
         {
             // Render the view html to a string
             var html = ActionResultToString(View(model));
@@ -162,7 +174,12 @@ namespace RazorPdf.Controllers
                 stream.Read(buffer, 0, buffer.Length);
 
                 // Return pdf file reponse
-                return File(buffer, "application/pdf", fileName);
+                if (!string.IsNullOrWhiteSpace(fileName))
+                {
+                    return File(buffer, "application/pdf", fileName);
+                }
+
+                return BinaryContent(buffer, "application/pdf");
             }
         }
 
